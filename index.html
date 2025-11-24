@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockBlast Slayer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>BlockBlast Slayer</h1>
+            <button id="theme-toggle">🌙 黑暗模式</button>
+        </div>
+
+        <div id="input-area-grid">
+            
+            <div id="board-container">
+                <p class="instruction">1. 點擊棋盤設置殘局 (8x8)</p>
+                <div id="board"></div>
+            </div>
+            
+            <div id="piece-input-area">
+                <h2 class="section-title">2. 繪製待用方塊 (5x5)</h2>
+                <p class="instruction-small">點擊 5x5 格子繪製當前持有的方塊</p>
+                <div id="pieces-list" class="pieces-list">
+                    </div>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <button id="continue-button" class="btn-secondary" disabled>沿用最終棋盤 ↩</button>
+            <button id="reset-button" class="btn-secondary">清空重置</button>
+            <button id="solve-button" class="btn-primary">✨ 啟動 AI 破解</button>
+        </div>
+        
+        <div id="playback-controls" class="playback-controls hidden">
+            <button id="prev-step" class="btn-control" disabled>◀ 上一步</button>
+            <span id="step-indicator">步驟 0 / 0</span>
+            <button id="next-step" class="btn-control">下一步 ▶</button>
+        </div>
+
+        <pre id="output-log">準備就緒... 請繪製棋盤與方塊。</pre>
+    </div>
+
+    <footer>
+        <p>© 2025 BlockBlast Slayer @0png</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
