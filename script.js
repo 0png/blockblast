@@ -1,5 +1,5 @@
 /**
- * BlockBlast 破解器 (8x8 + 視覺化回放 + 續解功能 + 5x5 方塊)
+ * BlockBlast 破解器 (8x8 + 視覺化回放 + 續解功能 + 5x5 方塊 + 拖動選取)
  */
 
 // --- 配置參數 ---
@@ -16,9 +16,15 @@ let availablePieces = [
 ];
 
 // --- 續解狀態 ---
-let lastSolvedBoard = null; 
+let lastSolvedBoard = null;
 
-// --- DOM 元素 (略) ---
+// --- 拖動選取狀態 ---
+let isDragging = false;
+let dragMode = null; // 'fill' or 'clear'
+let dragTarget = null; // 'board' or 'piece'
+let dragPieceIndex = null;
+
+// --- DOM 元素 ---
 const boardEl = document.getElementById('board');
 const piecesListEl = document.getElementById('pieces-list');
 const outputLogEl = document.getElementById('output-log');
@@ -56,13 +62,29 @@ function setupEventListeners() {
     document.getElementById('solve-button').addEventListener('click', handleSolve);
     btnContinue.addEventListener('click', useLastResult);
     
-    boardEl.addEventListener('click', handleBoardClick);
-    piecesListEl.addEventListener('click', handlePieceGridClick);
+    // 棋盤拖動事件
+    boardEl.addEventListener('mousedown', handleBoardMouseDown);
+    boardEl.addEventListener('mousemove', handleBoardMouseMove);
+    boardEl.addEventListener('mouseup', handleDragEnd);
+    boardEl.addEventListener('mouseleave', handleDragEnd);
+    
+    boardEl.addEventListener('touchstart', handleBoardTouchStart, { passive: false });
+    boardEl.addEventListener('touchmove', handleBoardTouchMove, { passive: false });
+    boardEl.addEventListener('touchend', handleDragEnd);
+    
+    // 方塊網格拖動事件
+    piecesListEl.addEventListener('mousedown', handlePieceMouseDown);
+    piecesListEl.addEventListener('mousemove', handlePieceMouseMove);
+    piecesListEl.addEventListener('mouseup', handleDragEnd);
+    piecesListEl.addEventListener('mouseleave', handleDragEnd);
+    
+    piecesListEl.addEventListener('touchstart', handlePieceTouchStart, { passive: false });
+    piecesListEl.addEventListener('touchmove', handlePieceTouchMove, { passive: false });
+    piecesListEl.addEventListener('touchend', handleDragEnd);
     
     btnPrev.addEventListener('click', () => PlaybackManager.prevStep());
     btnNext.addEventListener('click', () => PlaybackManager.nextStep());
 }
-
 
 function renderBoard(grid, previewMove = null) {
     boardEl.innerHTML = '';
@@ -94,10 +116,8 @@ function renderPieces() {
         const container = document.createElement('div');
         container.className = 'piece-input-grid';
         container.dataset.pieceIndex = index;
-        // 渲染時使用 PIECE_GRID_COLS (5) 來定義列數
         container.style.gridTemplateColumns = `repeat(${PIECE_GRID_COLS}, 1fr)`;
 
-        // 遍歷實際的 grid 尺寸 (5 rows x 5 cols)
         pieceGrid.forEach((row, r) => {
             row.forEach((isFilled, c) => {
                 const cell = document.createElement('div');
@@ -112,42 +132,199 @@ function renderPieces() {
 }
 
 // ==========================================
-// 2. 點擊輸入邏輯 (Click-to-Toggle)
+// 2. 拖動選取邏輯 (Drag Selection)
 // ==========================================
 
-function handleBoardClick(e) {
+// 棋盤拖動 - 鼠標
+function handleBoardMouseDown(e) {
     if (PlaybackManager.isActive) PlaybackManager.stop();
     const cell = e.target.closest('.cell');
     if (!cell) return;
     
+    e.preventDefault();
+    isDragging = true;
+    dragTarget = 'board';
+    
     const r = +cell.dataset.row;
     const c = +cell.dataset.col;
     
-    boardGrid[r][c] = !boardGrid[r][c];
-    cell.classList.toggle('filled');
+    dragMode = boardGrid[r][c] ? 'clear' : 'fill';
+    applyBoardDrag(r, c);
 }
 
-function handlePieceGridClick(e) {
+function handleBoardMouseMove(e) {
+    if (!isDragging || dragTarget !== 'board') return;
+    
+    const cell = document.elementFromPoint(e.clientX, e.clientY)?.closest('.cell');
+    if (!cell) return;
+    
+    const r = +cell.dataset.row;
+    const c = +cell.dataset.col;
+    applyBoardDrag(r, c);
+}
+
+// 棋盤拖動 - 觸控
+function handleBoardTouchStart(e) {
+    if (PlaybackManager.isActive) PlaybackManager.stop();
+    const touch = e.touches[0];
+    const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.cell');
+    if (!cell) return;
+    
+    e.preventDefault();
+    isDragging = true;
+    dragTarget = 'board';
+    
+    const r = +cell.dataset.row;
+    const c = +cell.dataset.col;
+    
+    dragMode = boardGrid[r][c] ? 'clear' : 'fill';
+    applyBoardDrag(r, c);
+}
+
+function handleBoardTouchMove(e) {
+    if (!isDragging || dragTarget !== 'board') return;
+    e.preventDefault();
+    
+    const touch = e.touches[0];
+    const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.cell');
+    if (!cell) return;
+    
+    const r = +cell.dataset.row;
+    const c = +cell.dataset.col;
+    applyBoardDrag(r, c);
+}
+
+function applyBoardDrag(r, c) {
+    const shouldFill = dragMode === 'fill';
+    if (boardGrid[r][c] !== shouldFill) {
+        boardGrid[r][c] = shouldFill;
+        const cell = boardEl.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        if (cell) {
+            if (shouldFill) {
+                cell.classList.add('filled');
+            } else {
+                cell.classList.remove('filled');
+            }
+        }
+    }
+}
+
+// 方塊網格拖動 - 鼠標
+function handlePieceMouseDown(e) {
     if (PlaybackManager.isActive) PlaybackManager.stop();
     const cell = e.target.closest('.piece-input-cell');
     if (!cell) return;
     
+    e.preventDefault();
+    isDragging = true;
+    dragTarget = 'piece';
+    
     const container = cell.closest('.piece-input-grid');
-    const pIndex = +container.dataset.pieceIndex;
+    dragPieceIndex = +container.dataset.pieceIndex;
+    
     const r = +cell.dataset.row;
     const c = +cell.dataset.col;
-
-    // 確保點擊座標在新的 5x5 範圍內
+    
     if (r >= PIECE_GRID_ROWS || c >= PIECE_GRID_COLS) return;
-
-    availablePieces[pIndex][r][c] = !availablePieces[pIndex][r][c];
-    cell.classList.toggle('filled');
+    
+    dragMode = availablePieces[dragPieceIndex][r][c] ? 'clear' : 'fill';
+    applyPieceDrag(dragPieceIndex, r, c);
 }
+
+function handlePieceMouseMove(e) {
+    if (!isDragging || dragTarget !== 'piece') return;
+    
+    const cell = document.elementFromPoint(e.clientX, e.clientY)?.closest('.piece-input-cell');
+    if (!cell) return;
+    
+    const container = cell.closest('.piece-input-grid');
+    const pIndex = +container.dataset.pieceIndex;
+    
+    if (pIndex !== dragPieceIndex) return;
+    
+    const r = +cell.dataset.row;
+    const c = +cell.dataset.col;
+    
+    if (r >= PIECE_GRID_ROWS || c >= PIECE_GRID_COLS) return;
+    
+    applyPieceDrag(pIndex, r, c);
+}
+
+// 方塊網格拖動 - 觸控
+function handlePieceTouchStart(e) {
+    if (PlaybackManager.isActive) PlaybackManager.stop();
+    const touch = e.touches[0];
+    const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.piece-input-cell');
+    if (!cell) return;
+    
+    e.preventDefault();
+    isDragging = true;
+    dragTarget = 'piece';
+    
+    const container = cell.closest('.piece-input-grid');
+    dragPieceIndex = +container.dataset.pieceIndex;
+    
+    const r = +cell.dataset.row;
+    const c = +cell.dataset.col;
+    
+    if (r >= PIECE_GRID_ROWS || c >= PIECE_GRID_COLS) return;
+    
+    dragMode = availablePieces[dragPieceIndex][r][c] ? 'clear' : 'fill';
+    applyPieceDrag(dragPieceIndex, r, c);
+}
+
+function handlePieceTouchMove(e) {
+    if (!isDragging || dragTarget !== 'piece') return;
+    e.preventDefault();
+    
+    const touch = e.touches[0];
+    const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.piece-input-cell');
+    if (!cell) return;
+    
+    const container = cell.closest('.piece-input-grid');
+    const pIndex = +container.dataset.pieceIndex;
+    
+    if (pIndex !== dragPieceIndex) return;
+    
+    const r = +cell.dataset.row;
+    const c = +cell.dataset.col;
+    
+    if (r >= PIECE_GRID_ROWS || c >= PIECE_GRID_COLS) return;
+    
+    applyPieceDrag(pIndex, r, c);
+}
+
+function applyPieceDrag(pIndex, r, c) {
+    const shouldFill = dragMode === 'fill';
+    if (availablePieces[pIndex][r][c] !== shouldFill) {
+        availablePieces[pIndex][r][c] = shouldFill;
+        const container = piecesListEl.querySelector(`[data-piece-index="${pIndex}"]`);
+        const cell = container?.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        if (cell) {
+            if (shouldFill) {
+                cell.classList.add('filled');
+            } else {
+                cell.classList.remove('filled');
+            }
+        }
+    }
+}
+
+// 結束拖動
+function handleDragEnd() {
+    isDragging = false;
+    dragMode = null;
+    dragTarget = null;
+    dragPieceIndex = null;
+}
+
+// ==========================================
+// 3. 重置與續解功能
+// ==========================================
 
 function resetAll() {
     PlaybackManager.stop();
     boardGrid = createGrid(BOARD_SIZE);
-    // 重置時使用新的 5x5 尺寸
     availablePieces = [
         createPieceGrid(PIECE_GRID_ROWS, PIECE_GRID_COLS),
         createPieceGrid(PIECE_GRID_ROWS, PIECE_GRID_COLS),
@@ -167,7 +344,6 @@ function useLastResult() {
     }
     
     boardGrid = lastSolvedBoard.map(row => [...row]);
-    // 續解時使用新的 5x5 尺寸
     availablePieces = [
         createPieceGrid(PIECE_GRID_ROWS, PIECE_GRID_COLS),
         createPieceGrid(PIECE_GRID_ROWS, PIECE_GRID_COLS),
@@ -184,12 +360,10 @@ function useLastResult() {
     outputLogEl.textContent = "✅ 已沿用最終棋盤！請在右側繪製新方塊並再次破解。";
 }
 
-
 // ==========================================
-// 3. 回放管理器 (Playback System)
+// 4. 回放管理器 (Playback System)
 // ==========================================
 const PlaybackManager = {
-    // ... (邏輯與之前保持不變) ...
     isActive: false,
     steps: [],
     currentStepIndex: 0,
@@ -273,9 +447,8 @@ const PlaybackManager = {
     }
 };
 
-
 // ==========================================
-// 4. AI 核心演算法 (Solver)
+// 5. AI 核心演算法 (Solver)
 // ==========================================
 
 const BlockBlastSolver = {
@@ -378,12 +551,9 @@ const BlockBlastSolver = {
         return emptyCount * this.WEIGHTS.EMPTY_CELL;
     },
 
-    // 核心更新：使用 5x5 尺寸
     parsePieceShape: function(grid) {
         const coords = [];
-        // 遍歷 5 行 (PIECE_GRID_ROWS)
         for (let r = 0; r < PIECE_GRID_ROWS; r++) {
-            // 遍歷 5 列 (PIECE_GRID_COLS)
             for (let c = 0; c < PIECE_GRID_COLS; c++) {
                 if (grid[r][c]) coords.push([r, c]);
             }
@@ -396,7 +566,7 @@ const BlockBlastSolver = {
 };
 
 // ==========================================
-// 5. 執行入口與主題設定 (略)
+// 6. 執行入口與主題設定
 // ==========================================
 
 function handleSolve() {
