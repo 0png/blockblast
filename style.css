@@ -14,6 +14,10 @@
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 [data-theme='dark'] {
     /* 黑暗模式 (黑白灰美化) */
     --color-text: #ffffff;             
@@ -103,6 +107,10 @@ button:hover { opacity: 0.85; }
     margin-bottom: 10px;
     flex-wrap: wrap; 
     justify-content: center;
+    width: 100%;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 #continue-button:disabled, .btn-control:disabled {
@@ -125,20 +133,26 @@ button:hover { opacity: 0.85; }
 @media (min-width: 768px) {
     #input-area-grid {
         flex-direction: row; 
-        justify-content: space-around;
+        justify-content: center;
         align-items: flex-start;
+        gap: 40px;
     }
     
     #board-container {
         flex: 1 1 45%; 
+        max-width: 420px;
     }
+    
+    #board-container .playback-controls {
+        order: 3;
+        margin-top: 10px;
+    }
+
     #piece-input-area {
         flex: 1 1 45%;
-        max-width: 400px; 
-        padding: 20px; 
-        background-color: var(--color-secondary);
-        border-radius: 12px;
-        box-shadow: var(--shadow);
+        max-width: 420px;
+        width: 100%;
+        margin: 0;
     }
 }
 
@@ -146,9 +160,46 @@ button:hover { opacity: 0.85; }
 
 /* 新增：修復手機上棋盤寬度過小的問題 */
 #board-container {
-    width: 90%; /* 確保在手機上佔據大部分寬度 */
-    max-width: 400px; /* 限制最大寬度，保持美觀 */
-    margin: 0 auto;
+    width: 100%;
+    max-width: 420px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#board-container #board {
+    order: 2;
+}
+
+#board-container .playback-controls {
+    width: 100%;
+    order: 1;
+    margin: 0;
+}
+
+@media (min-width: 768px) {
+    .action-buttons {
+        align-self: flex-start;
+        margin-left: 0;
+        margin-right: 0;
+    }
+}
+
+@media (max-width: 767px) {
+    #board-container {
+        width: 90%;
+        margin: 0 auto;
+    }
+}
+
+#board {
+    display: grid;
+    width: 100%; /* 確保棋盤佔滿其父容器 #board-container */
+    border: 2px solid var(--color-board-border);
+    background-color: var(--color-board-border);
+    gap: 1px;
+    box-shadow: var(--shadow);
 }
 
 #board {
@@ -179,14 +230,20 @@ button:hover { opacity: 0.85; }
 
 /* --- 6. 待用方塊區 (5x5) --- */
 
-/* 窄螢幕下的方塊區背景和邊界 */
-#piece-input-area:not([style*="flex-basis"]) {
+/* 方塊區背景和邊界 */
+#piece-input-area {
     padding: 20px;
     background-color: var(--color-secondary);
     border-radius: 12px;
     box-shadow: var(--shadow);
-    width: 90%; /* 讓方塊區也佔據大部分寬度 */
-    max-width: 400px;
+}
+
+@media (max-width: 767px) {
+    #piece-input-area {
+        width: 90%;
+        max-width: 420px;
+        margin: 0 auto;
+    }
 }
 
 .pieces-list {

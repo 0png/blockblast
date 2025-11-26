@@ -18,6 +18,11 @@
             
             <div id="board-container">
                 <p class="instruction">1. 點擊棋盤設置殘局 (8x8)</p>
+                <div id="playback-controls" class="playback-controls hidden">
+                    <button id="prev-step" class="btn-control" disabled>◀ 上一步</button>
+                    <span id="step-indicator">步驟 0 / 0</span>
+                    <button id="next-step" class="btn-control">下一步 ▶</button>
+                </div>
                 <div id="board"></div>
             </div>
             
@@ -33,12 +38,6 @@
             <button id="continue-button" class="btn-secondary" disabled>沿用最終棋盤 ↩</button>
             <button id="reset-button" class="btn-secondary">清空重置</button>
             <button id="solve-button" class="btn-primary">✨ 啟動 AI 破解</button>
-        </div>
-        
-        <div id="playback-controls" class="playback-controls hidden">
-            <button id="prev-step" class="btn-control" disabled>◀ 上一步</button>
-            <span id="step-indicator">步驟 0 / 0</span>
-            <button id="next-step" class="btn-control">下一步 ▶</button>
         </div>
 
         <pre id="output-log">準備就緒... 請繪製棋盤與方塊。</pre>
