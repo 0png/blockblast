@@ -134,7 +134,7 @@ button:hover { opacity: 0.85; }
     #input-area-grid {
         flex-direction: row; 
         justify-content: center;
-        align-items: flex-start;
+        align-items: center;
         gap: 40px;
     }
     
